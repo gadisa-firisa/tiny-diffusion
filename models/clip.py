@@ -339,7 +339,6 @@ class CLIPTextEncoder(nn.Module):
 
 
 def build_text_stack(
-    use_bpe: bool,
     context_length: int = 77,
     vocab_json_path: Optional[str] = None,
     merges_txt_path: Optional[str] = None,
@@ -351,7 +350,7 @@ def build_text_stack(
     heads: int = 8,
 ) -> Tuple[nn.Module, object]:
    
-    if use_bpe:
+    if vocab_json_path is not None and merges_txt_path is not None:
         assert vocab_json_path and merges_txt_path, "Provide local vocab.json and merges.txt"
         tok = BPECLIPTokenizer(
             vocab_json_path=vocab_json_path,
