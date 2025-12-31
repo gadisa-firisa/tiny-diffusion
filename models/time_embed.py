@@ -36,4 +36,5 @@ class SiLU(nn.Module):
         super().__init__() 
     
     def forward(self, x: torch.Tensor)-> torch.Tensor: 
-        return x / (1.0 + torch.exp(-x))
+        # return x / (1.0 + torch.exp(-x))
+        return x*torch.sigmoid(x) # for better numerical stability
