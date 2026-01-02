@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from time_embed import SiLU, TimeEmbedding
+from .time_embed import SiLU, TimeEmbedding
 
 
 class TextProj(nn.Module):
@@ -285,7 +285,6 @@ class TinyUNet(nn.Module):
                         attn=attn,
                         self_attn=self_attn,
                         downsample=downsample,
-                        out_ch=out_ch,
                     )
                 )
             )
@@ -334,7 +333,6 @@ class TinyUNet(nn.Module):
                         attn=attn,
                         self_attn=self_attn,
                         upsample=upsample,
-                        in_ch=out_ch,
                     )
                 )
             )

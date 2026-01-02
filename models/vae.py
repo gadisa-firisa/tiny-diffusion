@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from typing import Tuple, Optional
-from time_embed import SiLU
+from .time_embed import SiLU
 
 class GroupNorm(nn.Module):
     def __init__(self, num_groups: int, num_channels: int, eps: float = 1e-5, affine: bool = True):
