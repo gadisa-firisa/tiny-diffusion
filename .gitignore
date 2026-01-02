@@ -1,2 +1,9 @@
 **-env/
 **.env
+datasets/
+.venv/
+__pycache__/
+*.pyc
+uv.lock
+data/
+.DS_Store

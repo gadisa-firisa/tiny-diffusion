@@ -15,7 +15,7 @@ from data import get_dataloader
 def parse_args():
     p = argparse.ArgumentParser()
     # data
-    p.add_argument("--dataset", type=str, default="flickr30k")
+    p.add_argument("--dataset", type=str, default="ariG23498/flickr8k")
     p.add_argument("--split", type=str, default="train")
     p.add_argument("--cache_dir", type=str, default="./data/hf")
     p.add_argument("--image_size", type=int, default=256)
@@ -37,8 +37,8 @@ def main():
     torch.manual_seed(0)
 
     text_enc, tokenizer = build_text_stack(
-        vocab_json_path= "",
-        merges_txt_path= "",
+        vocab_json_path= "./datasets/clip/vocab.json",
+        merges_txt_path= "./datasets/clip/merges.txt",
         context_length=77,
     )
     text_enc.to(device)

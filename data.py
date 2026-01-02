@@ -9,7 +9,7 @@ class DatasetCaptions(Dataset):
 
     def __init__(
         self,
-        name: str = "flickr30k",
+        name: str = "lmms-lab/flickr30k",
         split: str = "train",
         cache_dir: Optional[str] = None,
         image_size: int = 256,
@@ -85,18 +85,19 @@ def get_dataloader(
     num_workers: int = 2,
     shuffle: bool = True,
 ) -> DataLoader:
-    name = name.lower()
-    if name in {"flickr30k", "flickr8k", "coco", "coco_captions", "vizwiz_caption"}:
-        ds = DatasetCaptions(name=name, split=split, cache_dir=cache_dir, image_size=image_size, subset_size=subset_size)
-    else:
-        raise ValueError(f"Unknown dataset: {name}")
+    ds = DatasetCaptions(name=name, split=split, cache_dir=cache_dir, image_size=image_size, subset_size=subset_size)
+
+    is_mps = torch.backends.mps.is_available()
+    use_pin_memory = torch.cuda.is_available() and not is_mps
+    effective_workers = 0 if is_mps else max(0, num_workers)
 
     loader = DataLoader(
         ds,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=num_workers,
-        pin_memory=True,
+        num_workers=effective_workers,
+        pin_memory=use_pin_memory,
         drop_last=True,
+        persistent_workers=False if effective_workers == 0 else True,
     )
     return loader
