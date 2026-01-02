@@ -1,0 +1,13 @@
+[project]
+name = "diffusion"
+version = "0.1.0"
+description = "Diffusion training and sampling"
+
+requires-python = ">=3.12"
+dependencies = [
+  "torch==2.9.0",
+  "torchvision==0.24.0",
+  "datasets==2.19.0",
+  "Pillow==11.0.0",
+]
+
