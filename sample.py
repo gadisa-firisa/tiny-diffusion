@@ -6,7 +6,7 @@ import torch
 
 from models.vae import AutoencoderKL
 from models.unet import TinyUNet
-from models.clip import build_text_stack
+from models.clip import Config as CLIPConfig, get_tokenizer_and_encoder
 from schedulers.ddpm import DDPMScheduler
 from schedulers.flow_matching import FlowMatchingScheduler
 from PIL import Image
@@ -23,13 +23,31 @@ def save_image(x: torch.Tensor, path: str) -> None:
 
 
 @torch.no_grad()
-def sample(prompt: str, steps: int = 50, seed: Optional[int] = 0, out: Optional[str] = None, scheduler_type: str = "ddpm") -> torch.Tensor:
+def sample(prompt: str, 
+        steps: int = 50, 
+        seed: Optional[int] = 0, 
+        out: Optional[str] = None, 
+        scheduler_type: str = "ddpm",
+        vocab_path: str = None,
+        merges_path: str = None) -> torch.Tensor:
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if seed is not None:
         torch.manual_seed(seed)
 
     # Text encoder + tokenizer
-    text_enc, tokenizer = build_text_stack(vocab_json_path= "", merges_txt_path= "", context_length=77)
+    clip_cfg = CLIPConfig(
+        context_length=77,
+        vocab_json_path=vocab_path,
+        merges_txt_path=merges_path,
+        pad_token=None,
+        bos_token=None,
+        eos_token="</s>",
+        model_width=512,
+        layers=12,
+        heads=8,
+    )
+    text_enc, tokenizer = get_tokenizer_and_encoder(clip_cfg)
     text_enc.to(device).eval()
 
     # VAE
@@ -100,9 +118,12 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=str, default="sample.png")
     p.add_argument("--scheduler", type=str, default="ddpm", choices=["ddpm", "flow"])
+    p.add_argument("--vocab-path", type=str, default=None)
+    p.add_argument("--merges-path", type=str, default=None)
+
     args = p.parse_args()
 
-    img = sample(args.prompt, steps=args.steps, seed=args.seed, out=args.out, scheduler_type=args.scheduler)
+    img = sample(args.prompt, steps=args.steps, seed=args.seed, out=args.out, scheduler_type=args.scheduler, vocab_path=args.vocab_path, merges_path=args.merges_path)
     print(f"[{args.scheduler}] Generated image tensor: {tuple(img.shape)} saved to {args.out}")
 
 

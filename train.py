@@ -7,7 +7,7 @@ import torch.optim as optim
 
 from models.vae import AutoencoderKL
 from models.unet import TinyUNet
-from models.clip import build_text_stack
+from models.clip import Config as CLIPConfig, get_tokenizer_and_encoder
 from schedulers.ddpm import DDPMScheduler
 from schedulers.flow_matching import FlowMatchingScheduler
 from data import get_dataloader
@@ -28,6 +28,9 @@ def parse_args():
     # scheduler/model
     p.add_argument("--scheduler", type=str, default="ddpm", choices=["ddpm", "flow"])
     p.add_argument("--prediction_type", type=str, default="epsilon", choices=["epsilon", "x0", "v_prediction"], help="For DDPM-like schedulers")
+    
+    p.add_argument("--vocab-path", type=str, default=None)
+    p.add_argument("--merges-path", type=str, default=None)
     return p.parse_args()
 
 
@@ -36,11 +39,18 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    text_enc, tokenizer = build_text_stack(
-        vocab_json_path= "./datasets/clip/vocab.json",
-        merges_txt_path= "./datasets/clip/merges.txt",
+    clip_cfg = CLIPConfig(
         context_length=77,
+        vocab_json_path=args.vocab_path,
+        merges_txt_path=args.merges_path,
+        pad_token=None,
+        bos_token=None,
+        eos_token="</s>",
+        model_width=512,
+        layers=12,
+        heads=8,
     )
+    text_enc, tokenizer = get_tokenizer_and_encoder(clip_cfg)
     text_enc.to(device)
     text_enc.eval()  
 

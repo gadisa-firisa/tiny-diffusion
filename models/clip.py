@@ -6,30 +6,19 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from dataclasses import dataclass
 
-
-def bytes_to_unicode() -> Dict[int, str]:
-    
-    bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
-    cs = bs[:]
-    n = 0
-    for b in range(256):
-        if b not in bs:
-            bs.append(b)
-            cs.append(256 + n)
-            n += 1
-    cs = [chr(n) for n in cs]
-    return dict(zip(bs, cs))
-
-
-def get_pairs(word: Tuple[str, ...]) -> set:
-    pairs = set()
-    prev_char = word[0]
-    for ch in word[1:]:
-        pairs.add((prev_char, ch))
-        prev_char = ch
-    return pairs
-
+@dataclass
+class Config:
+    context_length: int = 77
+    vocab_json_path: Optional[str] = None
+    merges_txt_path: Optional[str] = None
+    pad_token: Optional[str] = None
+    bos_token: Optional[str] = None
+    eos_token: Optional[str] = "</s>"
+    model_width: int = 512
+    layers: int = 12
+    heads: int = 8
 
 class BPECLIPTokenizer:
    
@@ -61,7 +50,7 @@ class BPECLIPTokenizer:
                     merges.append((pair[0], pair[1]))
         self.bpe_ranks: Dict[Tuple[str, str], int] = {pair: i for i, pair in enumerate(merges)}
 
-        self.byte_encoder = bytes_to_unicode()
+        self.byte_encoder = self.bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
 
         # special token ids
@@ -80,7 +69,7 @@ class BPECLIPTokenizer:
 
         word = list(token)
         word = tuple(word)
-        pairs = get_pairs(word)
+        pairs = self.get_pairs(word)
 
         if not pairs:
             self.cache[token] = [token]
@@ -112,7 +101,7 @@ class BPECLIPTokenizer:
             if len(word) == 1:
                 break
             else:
-                pairs = get_pairs(word)
+                pairs = self.get_pairs(word)
 
         tokens = list(word)
         self.cache[token] = tokens
@@ -144,7 +133,27 @@ class BPECLIPTokenizer:
             ids[i, : len(pieces)] = torch.tensor(pieces, dtype=torch.long)
         return ids
 
+    def bytes_to_unicode(self) -> Dict[int, str]:
 
+        bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
+        cs = bs[:]
+        n = 0
+        for b in range(256):
+            if b not in bs:
+                bs.append(b)
+                cs.append(256 + n)
+                n += 1
+        cs = [chr(n) for n in cs]
+        return dict(zip(bs, cs))
+
+    def get_pairs(self, word: Tuple[str, ...]) -> set:
+        pairs = set()
+        prev_char = word[0]
+        for ch in word[1:]:
+            pairs.add((prev_char, ch))
+            prev_char = ch
+        return pairs
+    
 class QuickGELU(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x * torch.sigmoid(1.702 * x)
@@ -338,37 +347,28 @@ class CLIPTextEncoder(nn.Module):
         self.load_openai_state(state)
 
 
-def build_text_stack(
-    context_length: int = 77,
-    vocab_json_path: Optional[str] = None,
-    merges_txt_path: Optional[str] = None,
-    pad_token: Optional[str] = None,
-    bos_token: Optional[str] = None,
-    eos_token: Optional[str] = "</s>",
-    model_width: int = 512,
-    layers: int = 12,
-    heads: int = 8,
-) -> Tuple[nn.Module, object]:
-   
-    if vocab_json_path is not None and merges_txt_path is not None:
-        assert vocab_json_path and merges_txt_path, "Provide local vocab.json and merges.txt"
-        tok = BPECLIPTokenizer(
-            vocab_json_path=vocab_json_path,
-            merges_txt_path=merges_txt_path,
-            context_length=context_length,
-            pad_token=pad_token,
-            bos_token=bos_token,
-            eos_token=eos_token,
+def get_tokenizer_and_encoder(config: Config) -> Tuple[nn.Module, object]:
+
+    if config.vocab_json_path is not None and config.merges_txt_path is not None:
+        assert config.vocab_json_path and config.merges_txt_path, "Provide local vocab.json and merges.txt"
+        
+        tokenizer = BPECLIPTokenizer(
+            vocab_json_path=config.vocab_json_path,
+            merges_txt_path=config.merges_txt_path,
+            context_length=config.context_length,
+            pad_token=config.pad_token,
+            bos_token=config.bos_token,
+            eos_token=config.eos_token,
         )
-        enc = CLIPTextEncoder(
-            vocab_size=tok.vocab_size,
-            context_length=context_length,
-            width=model_width,
-            layers=layers,
-            heads=heads,
-            eos_id=tok.eos_id,
+        encoder = CLIPTextEncoder(
+            vocab_size=tokenizer.vocab_size,
+            context_length=config.context_length,
+            width=config.model_width,
+            layers=config.layers,
+            heads=config.heads,
+            eos_id=tokenizer.eos_id,
         )
-        return enc, tok
+        return encoder, tokenizer
     else:
         raise ValueError("Only BPE tokenizer is supported.")
 
