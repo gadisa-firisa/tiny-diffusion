@@ -119,6 +119,12 @@ class BPECLIPTokenizer:
                 else:
                     continue
         return bpe_tokens
+    
+    def decode(self, ids: List[int]) -> str:
+
+        text = "".join(self.decoder[i] for i in ids if i in self.decoder)
+        byte_arr = bytearray(self.byte_decoder[ch] for ch in text)
+        return byte_arr.decode("utf-8", errors="replace")
 
     def __call__(self, texts: List[str]) -> torch.Tensor:
         B = len(texts)
@@ -132,8 +138,9 @@ class BPECLIPTokenizer:
             pieces = pieces[: self.context_length]
             ids[i, : len(pieces)] = torch.tensor(pieces, dtype=torch.long)
         return ids
-
-    def bytes_to_unicode(self) -> Dict[int, str]:
+    
+    @staticmethod
+    def bytes_to_unicode() -> Dict[int, str]:
 
         bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
         cs = bs[:]
@@ -146,7 +153,8 @@ class BPECLIPTokenizer:
         cs = [chr(n) for n in cs]
         return dict(zip(bs, cs))
 
-    def get_pairs(self, word: Tuple[str, ...]) -> set:
+    @staticmethod
+    def get_pairs(word: Tuple[str, ...]) -> set:
         pairs = set()
         prev_char = word[0]
         for ch in word[1:]:
